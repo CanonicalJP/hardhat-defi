@@ -22,9 +22,29 @@ async function main() {
     let { availableBorrowsETH, totalDebtETH } = await getBorrowUserData(lendingPool, deployer)
 
     const daiPrice = await getDaiPrice()
-    const amountDaitToBorrow = availableBorrowsETH.toString() * 0.95 * (1 / daiPrice.toNumber())
+    const amountDaitToBorrow = availableBorrowsETH.toString() * 0.95 * (1 / daiPrice.toNumber()) // I just don't want to borrow everything I ould, only 95%
     console.log(`You can borrow ${amountDaitToBorrow} DAI`)
     const amountDaitToBorrowWei = ethers.utils.parseEther(amountDaitToBorrow.toString())
+
+    const daiTokenAddress = "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+    await borrowDai(daiTokenAddress, lendingPool, amountDaitToBorrowWei, deployer)
+    await getBorrowUserData(lendingPool, deployer)
+
+    await repay(amountDaitToBorrowWei, daiTokenAddress, lendingPool, deployer)
+    await getBorrowUserData(lendingPool, deployer)
+}
+
+async function repay(amount, daiAddress, lendingPool, account) {
+    await approveErc20(daiAddress, lendingPool.address, amount, account)
+    const repayTx = await lendingPool.repay(daiAddress, amount, 1, account)
+    await repayTx.wait(1)
+    console.log("Repaid!!")
+}
+
+async function borrowDai(daiAddress, lendingPool, amountDaiToBorrowWei, account) {
+    const borrowTx = await lendingPool.borrow(daiAddress, amountDaiToBorrowWei, 1, 0, account)
+    await borrowTx.wait(1)
+    console.log("You've borrowed!")
 }
 
 async function getDaiPrice() {
@@ -40,9 +60,9 @@ async function getDaiPrice() {
 async function getBorrowUserData(lendingPool, account) {
     const { totalCollateralETH, totalDebtETH, availableBorrowsETH } =
         await lendingPool.getUserAccountData(account)
-    console.log(`You have ${totalCollateralETH} worth of ETH deposited`)
-    console.log(`You have ${totalDebtETH} worth of ETH borrowed`)
-    console.log(`You can borrow ${availableBorrowsETH} worth of ETH`)
+    console.log(`You have ${totalCollateralETH} worth of ETH deposited.`)
+    console.log(`You have ${totalDebtETH} worth of ETH borrowed.`)
+    console.log(`You can borrow ${availableBorrowsETH} worth of ETH.`)
     return { availableBorrowsETH, totalDebtETH }
 }
 
